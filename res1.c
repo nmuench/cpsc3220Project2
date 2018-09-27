@@ -107,8 +107,8 @@ void resource_print( struct resource_type_tag *self ){
     }
     printf("-------------------------------\n");
 
-	pthread_mutex_unlock(self->&lock);
     // exit critical section
+	pthread_mutex_unlock(self->&lock);
 }
 
 
@@ -137,8 +137,9 @@ int resource_allocate( struct resource_type_tag *self, int tid ){
     self->owner[rid] = tid;               // record which thread has it
     self->available_count--;              // decr count of available resources
 
-	pthread_mutex_unlock(self->&lock);
+
     // exit critical section
+	pthread_mutex_unlock(self->&lock);
 
     return rid;
 }
@@ -161,8 +162,9 @@ void resource_release( struct resource_type_tag *self, int tid, int rid ){
     self->owner[rid] = -1;                // reset ownership
     self->available_count++;              // incr count of available resources
 
-	pthread_cond_signal(&condition);
+
     // signal that a resource is available
+	pthread_cond_signal(&condition);
 
     // exit critical section
 	pthread_mutex_unlock(self->&lock);
