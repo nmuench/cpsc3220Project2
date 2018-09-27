@@ -29,12 +29,12 @@ typedef struct resource_type_tag{
                                //     after a vector to catch some overflows
 
     // mutual exclusion lock for synchronization
-	pthread_mutex_t lock;
+	  pthread_mutex_t lock;
     // condition variable for synchronization
-	pthread_cond_t condition;
+	  pthread_cond_t condition;
 
     // methods other than init (constructor) and reclaim (destructor)
-    void (*print)( struct resource_type_tag *self ); 
+    void (*print)( struct resource_type_tag *self );
     int (*allocate)( struct resource_type_tag *self, int tid );
     void (*release)( struct resource_type_tag *self, int tid, int rid );
 } resource_t;
@@ -81,9 +81,9 @@ int resource_check( resource_t *r ){
 void resource_reclaim( resource_t *r ){
     if( resource_check( r ) ) resource_error( 5 );
     // call to pthread_cond_destroy()
-	pthread_cond_destroy(r->&condtition);
+	pthread_cond_destroy(&r->condition);
     // call to pthread_mutex_destroy()
-	pthread_mutex_destroy(r->&lock);
+	pthread_mutex_destroy(&r->lock);
 
 
     free( r->owner );
@@ -96,7 +96,7 @@ void resource_print( struct resource_type_tag *self ){
     int i;
 
     // enter critical section
-	pthread_mutex_lock(self->&lock);
+	pthread_mutex_lock(&self->lock);
 
     if( resource_check( self ) )          // signature check
         resource_error( 6 );
@@ -107,7 +107,7 @@ void resource_print( struct resource_type_tag *self ){
     }
     printf("-------------------------------\n");
 
-	pthread_mutex_unlock(self->&lock);
+	pthread_mutex_unlock(&self->lock);
     // exit critical section
 }
 
@@ -116,13 +116,13 @@ int resource_allocate( struct resource_type_tag *self, int tid ){
     int rid;
 
     // enter critical section
-	pthread_mutex_lock(self->&lock);
+	pthread_mutex_lock(&self->lock);
 
     if( resource_check( self ) )          // signature check
         resource_error( 7 );
 
     // wait until a resource is available
-	pthread_cond_wait(&condition);
+	pthread_cond_wait(&self->condition, &self->lock);
 
     // assertion before allocating: self->available_count != 0
 
@@ -137,7 +137,7 @@ int resource_allocate( struct resource_type_tag *self, int tid ){
     self->owner[rid] = tid;               // record which thread has it
     self->available_count--;              // decr count of available resources
 
-	pthread_mutex_unlock(self->&lock);
+	pthread_mutex_unlock(&self->lock);
     // exit critical section
 
     return rid;
@@ -147,7 +147,7 @@ int resource_allocate( struct resource_type_tag *self, int tid ){
 void resource_release( struct resource_type_tag *self, int tid, int rid ){
 
     // enter critical section
-	pthread_mutex_lock(self->&lock);
+	pthread_mutex_lock(&self->lock);
 
 
     if( resource_check( self ) )          // signature check
@@ -161,11 +161,11 @@ void resource_release( struct resource_type_tag *self, int tid, int rid ){
     self->owner[rid] = -1;                // reset ownership
     self->available_count++;              // incr count of available resources
 
-	pthread_cond_signal(&condition);
+	pthread_cond_signal(&self->condition);
     // signal that a resource is available
 
     // exit critical section
-	pthread_mutex_unlock(self->&lock);
+	pthread_mutex_unlock(&self->lock);
 
 }
 
@@ -196,11 +196,11 @@ resource_t * resource_init( int type, int total ){
     r->signature = 0x1E5041CE;
 
     // call to pthread_mutex_init() with rc as return code
-	rc = pthread_mutex_init(&lock);
+	  rc = pthread_mutex_init(&r->lock, PTHREAD_MUTEX_NORMAL);
     if( rc != 0 ) resource_error( 3 );
 
     // call to pthread_cond_init() with rc as return code
-	rc = pthread_cond_init(&condition);
+	  rc = pthread_cond_init(&r->condition, NULL);
     if( rc != 0 ) resource_error( 4 );
 
     r->print = &resource_print;           // set method pointers
