@@ -107,8 +107,12 @@ void resource_print( struct resource_type_tag *self ){
     }
     printf("-------------------------------\n");
 
+<<<<<<< HEAD
 	pthread_mutex_unlock(&self->lock);
+=======
+>>>>>>> f6be3c08472e8fc55a0c0cb1a2d4e345eb3e51b9
     // exit critical section
+	pthread_mutex_unlock(self->&lock);
 }
 
 
@@ -139,6 +143,7 @@ int resource_allocate( struct resource_type_tag *self, int tid ){
 
 	pthread_mutex_unlock(&self->lock);
     // exit critical section
+	pthread_mutex_unlock(self->&lock);
 
     return rid;
 }
@@ -163,6 +168,7 @@ void resource_release( struct resource_type_tag *self, int tid, int rid ){
 
 	pthread_cond_signal(&self->condition);
     // signal that a resource is available
+	pthread_cond_signal(&condition);
 
     // exit critical section
 	pthread_mutex_unlock(&self->lock);
