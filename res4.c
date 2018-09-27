@@ -98,9 +98,9 @@ int resource_check( resource_t *r ){
 void resource_reclaim( resource_t *r ){
     if( resource_check( r ) ) resource_error( 5 );
     // call to pthread_cond_destroy()
-    pthread_cond_destroy(&r->condtion);
+    pthread_cond_destroy(&r->condition);
     // call to pthread_mutex_destroy()
-    pthread_mutex_t(&r->lock);
+    pthread_mutex_destroy(&r->lock);
     free( r->owner );
     free( r->status );
     free( r );
@@ -151,7 +151,7 @@ int resource_allocate( struct resource_type_tag *self, int tid,
     // etc.
 
     // assertion before allocating: self->available_count >= (*rv)[0]
-    if((*rv)[0] > self->available)
+    while((*rv)[0] > self->available_count)
     {
       pthread_cond_wait(&self->condition, &self->lock);
     }
@@ -166,13 +166,14 @@ int resource_allocate( struct resource_type_tag *self, int tid,
       {
         self->status[rid] = 1;
         self->owner[rid] = tid;
-        (*rv)[i] = rid;
+        (*rv)[i + 1] = rid;
+        self->available_count--;
         i++;
       }
       rid++;
     }
     //If unable to allocate enough resources, an error has occurred.
-    if(rid >= self->total_count)
+    if(rid > self->total_count)
     {
       resource_error(8);
     }
@@ -196,6 +197,18 @@ void resource_release( struct resource_type_tag *self, int tid,
     // access first resource id as (*rv)[1]
     // access second request count as (*rv)[2]
     // etc.
+    i = (*rv)[0];
+    while(i > 0)
+    {
+      rid = (*rv)[i];
+      self->status[rid] = 0;   //Marks the resource as unowned
+      self->owner[rid] = -1;    //Resets ownership of the resource
+      self->available_count++;
+      //Signals that a resource is available.
+      pthread_cond_signal(&self->condition);
+      i--;
+    }
+
 
     // exit critical section
     pthread_mutex_unlock(&self->lock);
@@ -228,11 +241,11 @@ resource_t * resource_init( int type, int total ){
     r->signature = 0x1E5041CE;
 
     // call to pthread_mutex_init() with rc as return code
-    rc = pthread_mutex_init(&lock, NULL);
+    rc = pthread_mutex_init(&r->lock, NULL);
     if( rc != 0 ) resource_error( 3 );
 
     // call to pthread_cond_init() with rc as return code
-    rc = pthread_cond_init(&condition, NULL);
+    rc = pthread_cond_init(&r->condition, NULL);
     if( rc != 0 ) resource_error( 4 );
 
     r->print = &resource_print;           // set method pointers

@@ -118,6 +118,7 @@ int resource_allocate( struct resource_type_tag *self, int tid ){
 
     // enter critical section
 	  pthread_mutex_lock(&self->lock);
+    
     if( resource_check( self ) )          // signature check
         resource_error( 7 );
 
@@ -165,7 +166,6 @@ void resource_release( struct resource_type_tag *self, int tid, int rid ){
 
     // signal that a resource is available
 	  pthread_cond_signal(&self->condition);
-
     // exit critical section
 	  pthread_mutex_unlock(&self->lock);
 
