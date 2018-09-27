@@ -45,10 +45,11 @@ typedef struct resource_type_tag{
                                //     after a vector to catch some overflows
 
     // mutual exclusion lock for synchronization
+    pthread_mutex_t lock;
     // condition variable for synchronization
-
+    pthread_cond_t condition;
     // methods other than init (constructor) and reclaim (destructor)
-    void (*print)( struct resource_type_tag *self ); 
+    void (*print)( struct resource_type_tag *self );
     int (*allocate)( struct resource_type_tag *self, int tid,
         resource_id_vector *rv );
     void (*release)( struct resource_type_tag *self, int tid,
@@ -97,7 +98,9 @@ int resource_check( resource_t *r ){
 void resource_reclaim( resource_t *r ){
     if( resource_check( r ) ) resource_error( 5 );
     // call to pthread_cond_destroy()
+    pthread_cond_destroy(&r->condtion);
     // call to pthread_mutex_destroy()
+    pthread_mutex_t(&r->lock);
     free( r->owner );
     free( r->status );
     free( r );
@@ -108,6 +111,7 @@ void resource_print( struct resource_type_tag *self ){
     int i;
 
     // enter critical section
+    pthread_mutex_lock(&self->lock);
 
     if( resource_check( self ) )          // signature check
         resource_error( 6 );
@@ -119,6 +123,7 @@ void resource_print( struct resource_type_tag *self ){
     printf("-------------------------------\n");
 
     // exit critical section
+    pthread_mutex_unlock(&self->lock);
 }
 
 
@@ -127,12 +132,14 @@ int resource_allocate( struct resource_type_tag *self, int tid,
     int i, rid;
 
     // enter critical section
+    pthread_mutex_lock(&self->lock);
 
     if( resource_check( self ) )              // signature check
         resource_error( 7 );
 
     if( (*rv)[0] > self->total_count ){       // limit check request
         // exit ctirictal section
+        pthread_mutex_unlock(&self->lock);
         return 1;
     }
 
@@ -144,8 +151,33 @@ int resource_allocate( struct resource_type_tag *self, int tid,
     // etc.
 
     // assertion before allocating: self->available_count >= (*rv)[0]
-
+    if((*rv)[0] > self->available)
+    {
+      pthread_cond_wait(&self->condition, &self->lock);
+    }
+    rid = 0;
+    i = 0;
+    //Finds and allocates resources that are free until enough resources
+    //have been allocated, or all resources have been tried.
+    while(i < (*rv)[0] && rid < self->total_count)
+    {
+      //Allocates the current resource if it is free
+      if(self->status[rid] == 0)
+      {
+        self->status[rid] = 1;
+        self->owner[rid] = tid;
+        (*rv)[i] = rid;
+        i++;
+      }
+      rid++;
+    }
+    //If unable to allocate enough resources, an error has occurred.
+    if(rid >= self->total_count)
+    {
+      resource_error(8);
+    }
     // exit critical section
+    pthread_mutex_unlock(&self->lock);
 
     return 0;
 }
@@ -156,6 +188,7 @@ void resource_release( struct resource_type_tag *self, int tid,
     int i, rid;
 
     // enter critical section
+    pthread_mutex_lock(&self->lock);
 
     // fill in
     //
@@ -165,6 +198,7 @@ void resource_release( struct resource_type_tag *self, int tid,
     // etc.
 
     // exit critical section
+    pthread_mutex_unlock(&self->lock);
 }
 
 
@@ -194,10 +228,12 @@ resource_t * resource_init( int type, int total ){
     r->signature = 0x1E5041CE;
 
     // call to pthread_mutex_init() with rc as return code
-    // if( rc != 0 ) resource_error( 3 );
+    rc = pthread_mutex_init(&lock, NULL);
+    if( rc != 0 ) resource_error( 3 );
 
     // call to pthread_cond_init() with rc as return code
-    // if( rc != 0 ) resource_error( 4 );
+    rc = pthread_cond_init(&condition, NULL);
+    if( rc != 0 ) resource_error( 4 );
 
     r->print = &resource_print;           // set method pointers
     r->allocate = &resource_allocate;
