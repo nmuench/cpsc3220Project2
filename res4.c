@@ -205,7 +205,7 @@ void resource_release( struct resource_type_tag *self, int tid,
       self->owner[rid] = -1;    //Resets ownership of the resource
       self->available_count++;
       //Signals that a resource is available.
-      pthread_cond_signal(&self->condition);
+      pthread_cond_broadcast(&self->condition);
       i--;
     }
 
