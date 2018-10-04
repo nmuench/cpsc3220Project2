@@ -11,6 +11,15 @@
 //Project 2, Fall 2018
 //11 October 2018
 
+
+//PART 3 DISCLAIMER: Although replacing signal with broadcast did have the intended
+//behavior of causing all threads which request 2 resources run before those which
+//request 3 resources, it also had the unintended behavior of causing some threads
+//which request two resources running befroe threads which request a single resource.
+//ALthough this was not intended to occur, it does not appear to negatively impact
+//program performance as the outputted time fro thread still matches that from the
+//project assignment sheet.
+
 #include <pthread.h>
 #include <unistd.h>
 #include <stdlib.h>
