@@ -2,7 +2,10 @@
 //
 // compile with "gcc -Wall res.c -pthread" if source file is named res.c
 // run with "./a.out" or "valgrind --tool=helgrind ./a.out"
-
+//Nick Muenchen
+//Professor Srimani
+//Project 2, Fall 2018
+//11 October 2018
 
 #include <pthread.h>
 #include <unistd.h>
@@ -118,7 +121,7 @@ int resource_allocate( struct resource_type_tag *self, int tid ){
 
     // enter critical section
 	  pthread_mutex_lock(&self->lock);
-    
+
     if( resource_check( self ) )          // signature check
         resource_error( 7 );
 
